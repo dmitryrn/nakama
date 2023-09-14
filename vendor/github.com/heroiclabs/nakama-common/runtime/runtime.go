@@ -93,6 +93,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 )
@@ -1116,4 +1117,31 @@ type NakamaModule interface {
 	ChannelMessageUpdate(ctx context.Context, channelID, messageID string, content map[string]interface{}, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
 	ChannelMessageRemove(ctx context.Context, channelId, messageId string, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
 	ChannelMessagesList(ctx context.Context, channelId string, limit int, forward bool, cursor string) (messages []*api.ChannelMessage, nextCursor string, prevCursor string, err error)
+
+	MatchmakerExtract(ctx context.Context) []*MatchmakerExtract
+}
+
+type MatchmakerExtract struct {
+	Presences         []*MatchmakerPresence
+	SessionID         string
+	PartyId           string
+	Query             string
+	MinCount          int
+	MaxCount          int
+	CountMultiple     int
+	StringProperties  map[string]string
+	NumericProperties map[string]float64
+	Ticket            string
+	Count             int
+	Intervals         int
+	CreatedAt         int64
+	Node              string
+}
+
+type MatchmakerPresence struct {
+	UserId    string    `json:"user_id"`
+	SessionId string    `json:"session_id"`
+	Username  string    `json:"username"`
+	Node      string    `json:"node"`
+	SessionID uuid.UUID `json:"-"`
 }
