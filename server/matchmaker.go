@@ -43,24 +43,31 @@ type MatchmakerPresence struct {
 func (p *MatchmakerPresence) GetUserId() string {
 	return p.UserId
 }
+
 func (p *MatchmakerPresence) GetSessionId() string {
 	return p.SessionId
 }
+
 func (p *MatchmakerPresence) GetNodeId() string {
 	return p.Node
 }
+
 func (p *MatchmakerPresence) GetHidden() bool {
 	return false
 }
+
 func (p *MatchmakerPresence) GetPersistence() bool {
 	return false
 }
+
 func (p *MatchmakerPresence) GetUsername() string {
 	return p.Username
 }
+
 func (p *MatchmakerPresence) GetStatus() string {
 	return ""
 }
+
 func (p *MatchmakerPresence) GetReason() runtime.PresenceReason {
 	return runtime.PresenceReasonUnknown
 }
@@ -78,12 +85,15 @@ type MatchmakerEntry struct {
 func (m *MatchmakerEntry) GetPresence() runtime.Presence {
 	return m.Presence
 }
+
 func (m *MatchmakerEntry) GetTicket() string {
 	return m.Ticket
 }
+
 func (m *MatchmakerEntry) GetProperties() map[string]interface{} {
 	return m.Properties
 }
+
 func (m *MatchmakerEntry) GetPartyId() string {
 	return m.PartyId
 }
@@ -182,16 +192,17 @@ type Matchmaker interface {
 	RemovePartyAll(partyID string) error
 	RemoveAll(node string)
 	Remove(tickets []string)
+	SetMatchmakerMatched(func() RuntimeMatchmakerMatchedFunction)
 }
 
 type LocalMatchmaker struct {
 	sync.Mutex
-	logger  *zap.Logger
-	node    string
-	config  Config
-	router  MessageRouter
-	metrics Metrics
-	runtime *Runtime
+	logger            *zap.Logger
+	node              string
+	config            Config
+	router            MessageRouter
+	metrics           Metrics
+	matchmakerMatched func() RuntimeMatchmakerMatchedFunction
 
 	active      *atomic.Uint32
 	stopped     *atomic.Bool
@@ -216,7 +227,7 @@ type LocalMatchmaker struct {
 	revThresholdFn func() *time.Timer
 }
 
-func NewLocalMatchmaker(logger, startupLogger *zap.Logger, config Config, router MessageRouter, metrics Metrics, runtime *Runtime) Matchmaker {
+func NewLocalMatchmaker(logger, startupLogger *zap.Logger, config Config, router MessageRouter, metrics Metrics) Matchmaker {
 	cfg := BlugeInMemoryConfig()
 	indexWriter, err := bluge.OpenWriter(cfg)
 	if err != nil {
@@ -231,7 +242,6 @@ func NewLocalMatchmaker(logger, startupLogger *zap.Logger, config Config, router
 		config:  config,
 		router:  router,
 		metrics: metrics,
-		runtime: runtime,
 
 		active:      atomic.NewUint32(1),
 		stopped:     atomic.NewBool(false),
@@ -267,6 +277,10 @@ func NewLocalMatchmaker(logger, startupLogger *zap.Logger, config Config, router
 	}()
 
 	return m
+}
+
+func (m *LocalMatchmaker) SetMatchmakerMatched(fn func() RuntimeMatchmakerMatchedFunction) {
+	m.matchmakerMatched = fn
 }
 
 func (m *LocalMatchmaker) Pause() {
@@ -637,8 +651,8 @@ func (m *LocalMatchmaker) Process() {
 				var err error
 
 				// Check if there's a matchmaker matched runtime callback, call it, and see if it returns a match ID.
-				fn := m.runtime.MatchmakerMatched()
-				if fn != nil {
+				fn := m.matchmakerMatched()
+				if m.matchmakerMatched() != nil {
 					tokenOrMatchID, isMatchID, err = fn(context.Background(), entries)
 					if err != nil {
 						m.logger.Error("Error running Matchmaker Matched hook.", zap.Error(err))

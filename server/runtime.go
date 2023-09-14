@@ -35,15 +35,17 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var (
-	ErrRuntimeRPCNotFound = errors.New("RPC function not found")
+var ErrRuntimeRPCNotFound = errors.New("RPC function not found")
+
+const (
+	API_PREFIX   = "/nakama.api.Nakama/"
+	RTAPI_PREFIX = "*rtapi.Envelope_"
 )
 
-const API_PREFIX = "/nakama.api.Nakama/"
-const RTAPI_PREFIX = "*rtapi.Envelope_"
-
-var API_PREFIX_LOWERCASE = strings.ToLower(API_PREFIX)
-var RTAPI_PREFIX_LOWERCASE = strings.ToLower(RTAPI_PREFIX)
+var (
+	API_PREFIX_LOWERCASE   = strings.ToLower(API_PREFIX)
+	RTAPI_PREFIX_LOWERCASE = strings.ToLower(RTAPI_PREFIX)
+)
 
 type (
 	RuntimeRpcFunction func(ctx context.Context, headers, queryParams map[string][]string, userID, username string, vars map[string]string, expiry int64, sessionID, clientIP, clientPort, lang, payload string) (string, error, codes.Code)
@@ -485,6 +487,8 @@ type RuntimeAfterReqFunctions struct {
 type Runtime struct {
 	matchCreateFunction RuntimeMatchCreateFunction
 
+	matchmakerExtract func() []*MatchmakerExtract
+
 	rpcFunctions map[string]RuntimeRpcFunction
 
 	beforeRtFunctions map[string]RuntimeBeforeRtFunction
@@ -607,7 +611,7 @@ func CheckRuntime(logger *zap.Logger, config Config, version string) error {
 	return nil
 }
 
-func NewRuntime(ctx context.Context, logger, startupLogger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, protojsonUnmarshaler *protojson.UnmarshalOptions, config Config, version string, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter) (*Runtime, *RuntimeInfo, error) {
+func NewRuntime(ctx context.Context, logger, startupLogger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, protojsonUnmarshaler *protojson.UnmarshalOptions, config Config, version string, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter, matchmaker Matchmaker) (*Runtime, *RuntimeInfo, error) {
 	runtimeConfig := config.GetRuntime()
 	startupLogger.Info("Initialising runtime", zap.String("path", runtimeConfig.Path))
 
@@ -622,7 +626,7 @@ func NewRuntime(ctx context.Context, logger, startupLogger *zap.Logger, db *sql.
 
 	matchProvider := NewMatchProvider()
 
-	goModules, goRPCFns, goBeforeRtFns, goAfterRtFns, goBeforeReqFns, goAfterReqFns, goMatchmakerMatchedFn, goTournamentEndFn, goTournamentResetFn, goLeaderboardResetFn, goPurchaseNotificationAppleFn, goSubscriptionNotificationAppleFn, goPurchaseNotificationGoogleFn, goSubscriptionNotificationGoogleFn, allEventFns, goMatchNamesListFn, err := NewRuntimeProviderGo(ctx, logger, startupLogger, db, protojsonMarshaler, config, version, socialClient, leaderboardCache, leaderboardRankCache, leaderboardScheduler, sessionRegistry, sessionCache, statusRegistry, matchRegistry, tracker, metrics, streamManager, router, runtimeConfig.Path, paths, eventQueue, matchProvider)
+	goModules, goRPCFns, goBeforeRtFns, goAfterRtFns, goBeforeReqFns, goAfterReqFns, goMatchmakerMatchedFn, goTournamentEndFn, goTournamentResetFn, goLeaderboardResetFn, goPurchaseNotificationAppleFn, goSubscriptionNotificationAppleFn, goPurchaseNotificationGoogleFn, goSubscriptionNotificationGoogleFn, allEventFns, goMatchNamesListFn, err := NewRuntimeProviderGo(ctx, logger, startupLogger, db, protojsonMarshaler, config, version, socialClient, leaderboardCache, leaderboardRankCache, leaderboardScheduler, sessionRegistry, sessionCache, statusRegistry, matchRegistry, tracker, metrics, streamManager, router, runtimeConfig.Path, paths, eventQueue, matchProvider, matchmaker)
 	if err != nil {
 		startupLogger.Error("Error initialising Go runtime provider", zap.Error(err))
 		return nil, nil, err
@@ -2531,6 +2535,7 @@ func NewRuntime(ctx context.Context, logger, startupLogger *zap.Logger, db *sql.
 
 	return &Runtime{
 		matchCreateFunction:                    matchProvider.CreateMatch,
+		matchmakerExtract:                      matchmaker.Extract,
 		rpcFunctions:                           allRPCFunctions,
 		beforeRtFunctions:                      allBeforeRtFunctions,
 		afterRtFunctions:                       allAfterRtFunctions,
@@ -2551,15 +2556,15 @@ func NewRuntime(ctx context.Context, logger, startupLogger *zap.Logger, db *sql.
 
 func runtimeInfo(paths []string, jsRpcIDs, luaRpcIDs, goRpcIDs map[string]bool, jsModules, luaModules, goModules []string) (*RuntimeInfo, error) {
 	jsRpcs := make([]string, 0, len(jsRpcIDs))
-	for id, _ := range jsRpcIDs {
+	for id := range jsRpcIDs {
 		jsRpcs = append(jsRpcs, id)
 	}
 	luaRpcs := make([]string, 0, len(luaRpcIDs))
-	for id, _ := range luaRpcIDs {
+	for id := range luaRpcIDs {
 		luaRpcs = append(luaRpcs, id)
 	}
 	goRpcs := make([]string, 0, len(goRpcIDs))
-	for id, _ := range goRpcIDs {
+	for id := range goRpcIDs {
 		goRpcs = append(goRpcs, id)
 	}
 

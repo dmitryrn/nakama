@@ -58,6 +58,7 @@ type RuntimeGoNakamaModule struct {
 	metrics              Metrics
 	streamManager        StreamManager
 	router               MessageRouter
+	matchmaker           Matchmaker
 
 	eventFn RuntimeEventCustomFunction
 
@@ -66,7 +67,7 @@ type RuntimeGoNakamaModule struct {
 	matchCreateFn RuntimeMatchCreateFunction
 }
 
-func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter) *RuntimeGoNakamaModule {
+func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter, matchmaker Matchmaker) *RuntimeGoNakamaModule {
 	return &RuntimeGoNakamaModule{
 		logger:               logger,
 		db:                   db,
@@ -84,6 +85,7 @@ func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler
 		metrics:              metrics,
 		streamManager:        streamManager,
 		router:               router,
+		matchmaker:           matchmaker,
 
 		node: config.GetName(),
 	}
@@ -2805,7 +2807,8 @@ func (n *RuntimeGoNakamaModule) PurchaseValidateApple(ctx context.Context, userI
 func (n *RuntimeGoNakamaModule) PurchaseValidateGoogle(ctx context.Context, userID, receipt string, persist bool, overrides ...struct {
 	ClientEmail string
 	PrivateKey  string
-}) (*api.ValidatePurchaseResponse, error) {
+},
+) (*api.ValidatePurchaseResponse, error) {
 	clientEmail := n.config.GetIAP().Google.ClientEmail
 	privateKey := n.config.GetIAP().Google.PrivateKey
 
@@ -2969,7 +2972,8 @@ func (n *RuntimeGoNakamaModule) SubscriptionValidateApple(ctx context.Context, u
 func (n *RuntimeGoNakamaModule) SubscriptionValidateGoogle(ctx context.Context, userID, receipt string, persist bool, overrides ...struct {
 	ClientEmail string
 	PrivateKey  string
-}) (*api.ValidateSubscriptionResponse, error) {
+},
+) (*api.ValidateSubscriptionResponse, error) {
 	clientEmail := n.config.GetIAP().Google.ClientEmail
 	privateKey := n.config.GetIAP().Google.PrivateKey
 
@@ -3965,4 +3969,8 @@ func (n *RuntimeGoNakamaModule) ChannelIdBuild(ctx context.Context, senderId, ta
 	}
 
 	return channelId, nil
+}
+
+func (n *RuntimeGoNakamaModule) MatchmakerExtract(ctx context.Context) []*MatchmakerExtract {
+	return n.matchmaker.Extract()
 }
