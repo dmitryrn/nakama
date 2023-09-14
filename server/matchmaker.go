@@ -652,7 +652,7 @@ func (m *LocalMatchmaker) Process() {
 
 				// Check if there's a matchmaker matched runtime callback, call it, and see if it returns a match ID.
 				fn := m.matchmakerMatched()
-				if m.matchmakerMatched() != nil {
+				if fn != nil {
 					tokenOrMatchID, isMatchID, err = fn(context.Background(), entries)
 					if err != nil {
 						m.logger.Error("Error running Matchmaker Matched hook.", zap.Error(err))
