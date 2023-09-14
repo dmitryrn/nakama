@@ -23,11 +23,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/heroiclabs/nakama/v3/internal/satori"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/heroiclabs/nakama/v3/internal/satori"
 
 	"github.com/gofrs/uuid"
 	"github.com/heroiclabs/nakama-common/api"
@@ -64,9 +65,10 @@ type RuntimeGoNakamaModule struct {
 	node                 string
 	matchCreateFn        RuntimeMatchCreateFunction
 	satori               runtime.Satori
+	matchmaker           Matchmaker
 }
 
-func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter) *RuntimeGoNakamaModule {
+func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter, matchmaker Matchmaker) *RuntimeGoNakamaModule {
 	return &RuntimeGoNakamaModule{
 		logger:               logger,
 		db:                   db,
@@ -84,6 +86,7 @@ func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler
 		metrics:              metrics,
 		streamManager:        streamManager,
 		router:               router,
+		matchmaker:           matchmaker,
 
 		node: config.GetName(),
 
@@ -2825,7 +2828,8 @@ func (n *RuntimeGoNakamaModule) PurchaseValidateApple(ctx context.Context, userI
 func (n *RuntimeGoNakamaModule) PurchaseValidateGoogle(ctx context.Context, userID, receipt string, persist bool, overrides ...struct {
 	ClientEmail string
 	PrivateKey  string
-}) (*api.ValidatePurchaseResponse, error) {
+},
+) (*api.ValidatePurchaseResponse, error) {
 	clientEmail := n.config.GetIAP().Google.ClientEmail
 	privateKey := n.config.GetIAP().Google.PrivateKey
 
@@ -2988,7 +2992,8 @@ func (n *RuntimeGoNakamaModule) SubscriptionValidateApple(ctx context.Context, u
 func (n *RuntimeGoNakamaModule) SubscriptionValidateGoogle(ctx context.Context, userID, receipt string, persist bool, overrides ...struct {
 	ClientEmail string
 	PrivateKey  string
-}) (*api.ValidateSubscriptionResponse, error) {
+},
+) (*api.ValidateSubscriptionResponse, error) {
 	clientEmail := n.config.GetIAP().Google.ClientEmail
 	privateKey := n.config.GetIAP().Google.PrivateKey
 
@@ -4006,4 +4011,8 @@ func (n *RuntimeGoNakamaModule) ChannelIdBuild(ctx context.Context, senderId, ta
 // @return satori(runtime.Satori) The Satori client.
 func (n *RuntimeGoNakamaModule) GetSatori() runtime.Satori {
 	return n.satori
+}
+
+func (n *RuntimeGoNakamaModule) MatchmakerExtract(ctx context.Context) []*MatchmakerExtract {
+	return n.matchmaker.Extract()
 }
