@@ -3971,6 +3971,36 @@ func (n *RuntimeGoNakamaModule) ChannelIdBuild(ctx context.Context, senderId, ta
 	return channelId, nil
 }
 
-func (n *RuntimeGoNakamaModule) MatchmakerExtract(ctx context.Context) []*MatchmakerExtract {
-	return n.matchmaker.Extract()
+func (n *RuntimeGoNakamaModule) MatchmakerExtract(ctx context.Context) []*runtime.MatchmakerExtract {
+	ext := n.matchmaker.Extract()
+	converted := make([]*runtime.MatchmakerExtract, len(ext))
+	for i, e := range ext {
+		presences := make([]*runtime.MatchmakerPresence, len(e.Presences))
+		for j, p := range e.Presences {
+			presences[j] = &runtime.MatchmakerPresence{
+				UserId:    p.UserId,
+				SessionId: p.SessionId,
+				Username:  p.Username,
+				Node:      p.Node,
+				SessionID: p.SessionID,
+			}
+		}
+		converted[i] = &runtime.MatchmakerExtract{
+			Presences:         presences,
+			SessionID:         e.SessionID,
+			PartyId:           e.PartyId,
+			Query:             e.Query,
+			MinCount:          e.MinCount,
+			MaxCount:          e.MaxCount,
+			CountMultiple:     e.CountMultiple,
+			StringProperties:  e.StringProperties,
+			NumericProperties: e.NumericProperties,
+			Ticket:            e.Ticket,
+			Count:             e.Count,
+			Intervals:         e.Intervals,
+			CreatedAt:         e.CreatedAt,
+			Node:              e.Node,
+		}
+	}
+	return converted
 }
