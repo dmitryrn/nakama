@@ -1140,6 +1140,7 @@ type NakamaModule interface {
 
 	GetSatori() Satori
 	MatchmakerExtract(ctx context.Context) []*MatchmakerExtract
+	PartyGet(ctx context.Context, id string) ([]string, bool, error)
 }
 
 /*
