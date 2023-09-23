@@ -59,6 +59,7 @@ type RuntimeGoNakamaModule struct {
 	streamManager        StreamManager
 	router               MessageRouter
 	matchmaker           Matchmaker
+	partyRegistry        PartyRegistry
 
 	eventFn RuntimeEventCustomFunction
 
@@ -67,7 +68,7 @@ type RuntimeGoNakamaModule struct {
 	matchCreateFn RuntimeMatchCreateFunction
 }
 
-func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter, matchmaker Matchmaker) *RuntimeGoNakamaModule {
+func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler *protojson.MarshalOptions, config Config, socialClient *social.Client, leaderboardCache LeaderboardCache, leaderboardRankCache LeaderboardRankCache, leaderboardScheduler LeaderboardScheduler, sessionRegistry SessionRegistry, sessionCache SessionCache, statusRegistry *StatusRegistry, matchRegistry MatchRegistry, tracker Tracker, metrics Metrics, streamManager StreamManager, router MessageRouter, matchmaker Matchmaker, partyRegistry PartyRegistry) *RuntimeGoNakamaModule {
 	return &RuntimeGoNakamaModule{
 		logger:               logger,
 		db:                   db,
@@ -86,6 +87,7 @@ func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler
 		streamManager:        streamManager,
 		router:               router,
 		matchmaker:           matchmaker,
+		partyRegistry:        partyRegistry,
 
 		node: config.GetName(),
 	}
@@ -4003,4 +4005,23 @@ func (n *RuntimeGoNakamaModule) MatchmakerExtract(ctx context.Context) []*runtim
 		}
 	}
 	return converted
+}
+
+func (n *RuntimeGoNakamaModule) PartyGet(ctx context.Context, id string) ([]string, bool, error) {
+	idUUID, err := uuid.FromString(id)
+	if err != nil {
+		return nil, false, fmt.Errorf("expects party ID to be a valid identifier: %v", err.Error())
+	}
+
+	presences, found := n.partyRegistry.PartyGet(idUUID)
+	if !found {
+		return nil, false, nil
+	}
+
+	uids := make([]string, len(presences))
+	for i, p := range presences {
+		uids[i] = p.UserId
+	}
+
+	return uids, true, nil
 }
