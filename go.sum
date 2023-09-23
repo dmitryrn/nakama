@@ -134,8 +134,8 @@ github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc/go.mod h1:c9O8+fp
 github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91/go.mod h1:2pZnwuY/m+8K6iRw6wQdMtk+rH5tNGR1i55kozfMjCc=
 github.com/dlclark/regexp2 v1.7.0 h1:7lJfhqlPssTb1WQx4yvTHN0uElPEv52sbaECrAQxjAo=
 github.com/dlclark/regexp2 v1.7.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
-github.com/dmitryrn/nakama-common v1.26.2 h1:p4ekMsbhBHTLhkpyuoTJduFpbNXoXZTOAHcmbuOAxL8=
-github.com/dmitryrn/nakama-common v1.26.2/go.mod h1:dFz97QiDVI4PoP+4iqEYmq7DXmH0OuyCiuUf6wnHt5w=
+github.com/dmitryrn/nakama-common v1.26.3 h1:6PVliVJA9qtDZspavN7Qs6ox63p6P3A5LhVylAQwbZw=
+github.com/dmitryrn/nakama-common v1.26.3/go.mod h1:dFz97QiDVI4PoP+4iqEYmq7DXmH0OuyCiuUf6wnHt5w=
 github.com/dop251/goja v0.0.0-20211022113120-dc8c55024d06/go.mod h1:R9ET47fwRVRPZnOGvHxxhuZcbrMCuiqOz3Rlrh4KSnk=
 github.com/dop251/goja v0.0.0-20221003171542-5ea1285e6c91 h1:1PfaQuGdeJVnHHQ0tg0Jw7MXagyqaAupJyk35/QM3I4=
 github.com/dop251/goja v0.0.0-20221003171542-5ea1285e6c91/go.mod h1:yRkwfj0CBpOGre+TwBsqPV0IH0Pk73e4PXJOeNDboGs=
