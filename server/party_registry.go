@@ -26,6 +26,8 @@ import (
 var ErrPartyNotFound = errors.New("party not found")
 
 type PartyRegistry interface {
+	PartyGet(id uuid.UUID) ([]*rtapi.UserPresence, bool)
+
 	Create(open bool, maxSize int, leader *rtapi.UserPresence) *PartyHandler
 	Delete(id uuid.UUID)
 
@@ -86,6 +88,16 @@ func (p *LocalPartyRegistry) Join(id uuid.UUID, presences []*Presence) {
 		return
 	}
 	ph.Join(presences)
+}
+
+func (p *LocalPartyRegistry) PartyGet(id uuid.UUID) ([]*rtapi.UserPresence, bool) {
+	ph, found := p.parties.Load(id)
+	if !found {
+		return nil, false
+	}
+	ph.Lock()
+	defer ph.Unlock()
+	return ph.memberUserPresences, true
 }
 
 func (p *LocalPartyRegistry) Leave(id uuid.UUID, presences []*Presence) {
