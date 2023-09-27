@@ -191,16 +191,18 @@ type Matchmaker interface {
 	RemoveAll(node string)
 	Remove(tickets []string)
 	SetMatchmakerMatched(func() RuntimeMatchmakerMatchedFunction)
+	SetMatchmakerOverride(func() RuntimeMatchmakerOverrideFunction)
 }
 
 type LocalMatchmaker struct {
 	sync.Mutex
-	logger            *zap.Logger
-	node              string
-	config            Config
-	router            MessageRouter
-	metrics           Metrics
-	matchmakerMatched func() RuntimeMatchmakerMatchedFunction
+	logger                     *zap.Logger
+	node                       string
+	config                     Config
+	router                     MessageRouter
+	metrics                    Metrics
+	matchmakerMatched          func() RuntimeMatchmakerMatchedFunction
+	matchmakerOverrideFunction func() RuntimeMatchmakerOverrideFunction
 
 	active      *atomic.Uint32
 	stopped     *atomic.Bool
@@ -276,6 +278,10 @@ func (m *LocalMatchmaker) SetMatchmakerMatched(fn func() RuntimeMatchmakerMatche
 	m.matchmakerMatched = fn
 }
 
+func (m *LocalMatchmaker) SetMatchmakerOverride(fn func() RuntimeMatchmakerOverrideFunction) {
+	m.matchmakerOverrideFunction = fn
+}
+
 func (m *LocalMatchmaker) Pause() {
 	m.active.Store(0)
 }
@@ -325,7 +331,7 @@ func (m *LocalMatchmaker) Process() {
 	// Run the custom matching function if one is registered in the runtime, otherwise use the default process function.
 	var matchedEntries [][]*MatchmakerEntry
 	var expiredActiveIndexes []string
-	if m.runtime.matchmakerOverrideFunction != nil {
+	if m.matchmakerOverrideFunction != nil {
 		matchedEntries, expiredActiveIndexes = m.processCustom(activeIndexesCopy, indexCount, indexesCopy)
 	} else {
 		matchedEntries, expiredActiveIndexes = m.processDefault(activeIndexCount, activeIndexesCopy, indexCount, indexesCopy)

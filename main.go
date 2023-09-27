@@ -160,6 +160,7 @@ func main() {
 		startupLogger.Fatal("Failed initializing runtime modules", zap.Error(err))
 	}
 	matchmaker.SetMatchmakerMatched(runtime.MatchmakerMatched)
+	matchmaker.SetMatchmakerOverride(runtime.MatchmakerOverride)
 	tracker.SetPartyJoinListener(partyRegistry.Join)
 	tracker.SetPartyLeaveListener(partyRegistry.Leave)
 
@@ -277,7 +278,7 @@ func newOrLoadCookie(config server.Config) string {
 	cookie := uuid.FromBytesOrNil(b)
 	if err != nil || cookie == uuid.Nil {
 		cookie = uuid.Must(uuid.NewV4())
-		_ = os.WriteFile(filePath, cookie.Bytes(), 0644)
+		_ = os.WriteFile(filePath, cookie.Bytes(), 0o644)
 	}
 	return cookie.String()
 }

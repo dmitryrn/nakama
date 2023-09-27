@@ -3304,6 +3304,10 @@ func (r *Runtime) MatchmakerMatched() RuntimeMatchmakerMatchedFunction {
 	return r.matchmakerMatchedFunction
 }
 
+func (r *Runtime) MatchmakerOverride() RuntimeMatchmakerOverrideFunction {
+	return r.matchmakerOverrideFunction
+}
+
 func (r *Runtime) TournamentEnd() RuntimeTournamentEndFunction {
 	return r.tournamentEndFunction
 }
