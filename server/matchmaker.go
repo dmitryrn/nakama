@@ -190,8 +190,8 @@ type Matchmaker interface {
 	RemovePartyAll(partyID string) error
 	RemoveAll(node string)
 	Remove(tickets []string)
-	SetMatchmakerMatched(func() RuntimeMatchmakerMatchedFunction)
-	SetMatchmakerOverride(func() RuntimeMatchmakerOverrideFunction)
+	SetMatchmakerMatched(RuntimeMatchmakerMatchedFunction)
+	SetMatchmakerOverride(RuntimeMatchmakerOverrideFunction)
 }
 
 type LocalMatchmaker struct {
@@ -201,8 +201,8 @@ type LocalMatchmaker struct {
 	config                     Config
 	router                     MessageRouter
 	metrics                    Metrics
-	matchmakerMatched          func() RuntimeMatchmakerMatchedFunction
-	matchmakerOverrideFunction func() RuntimeMatchmakerOverrideFunction
+	matchmakerMatched          RuntimeMatchmakerMatchedFunction
+	matchmakerOverrideFunction RuntimeMatchmakerOverrideFunction
 
 	active      *atomic.Uint32
 	stopped     *atomic.Bool
@@ -274,11 +274,11 @@ func NewLocalMatchmaker(logger, startupLogger *zap.Logger, config Config, router
 	return m
 }
 
-func (m *LocalMatchmaker) SetMatchmakerMatched(fn func() RuntimeMatchmakerMatchedFunction) {
+func (m *LocalMatchmaker) SetMatchmakerMatched(fn RuntimeMatchmakerMatchedFunction) {
 	m.matchmakerMatched = fn
 }
 
-func (m *LocalMatchmaker) SetMatchmakerOverride(fn func() RuntimeMatchmakerOverrideFunction) {
+func (m *LocalMatchmaker) SetMatchmakerOverride(fn RuntimeMatchmakerOverrideFunction) {
 	m.matchmakerOverrideFunction = fn
 }
 
@@ -331,7 +331,7 @@ func (m *LocalMatchmaker) Process() {
 	// Run the custom matching function if one is registered in the runtime, otherwise use the default process function.
 	var matchedEntries [][]*MatchmakerEntry
 	var expiredActiveIndexes []string
-	if m.matchmakerOverrideFunction() != nil {
+	if m.matchmakerOverrideFunction != nil {
 		matchedEntries, expiredActiveIndexes = m.processCustom(activeIndexesCopy, indexCount, indexesCopy)
 	} else {
 		matchedEntries, expiredActiveIndexes = m.processDefault(activeIndexCount, activeIndexesCopy, indexCount, indexesCopy)
@@ -401,9 +401,8 @@ func (m *LocalMatchmaker) Process() {
 				var err error
 
 				// Check if there's a matchmaker matched runtime callback, call it, and see if it returns a match ID.
-				fn := m.matchmakerMatched()
-				if fn != nil {
-					tokenOrMatchID, isMatchID, err = fn(context.Background(), entries)
+				if m.matchmakerMatched != nil {
+					tokenOrMatchID, isMatchID, err = m.matchmakerMatched(context.Background(), entries)
 					if err != nil {
 						m.logger.Error("Error running Matchmaker Matched hook.", zap.Error(err))
 					}
