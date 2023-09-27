@@ -1139,6 +1139,7 @@ type NakamaModule interface {
 	ChannelMessagesList(ctx context.Context, channelId string, limit int, forward bool, cursor string) (messages []*api.ChannelMessage, nextCursor string, prevCursor string, err error)
 
 	GetSatori() Satori
+
 	MatchmakerExtract(ctx context.Context) []*MatchmakerExtract
 	PartyGet(ctx context.Context, id string) ([]string, bool, error)
 }
