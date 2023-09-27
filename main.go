@@ -159,8 +159,8 @@ func main() {
 	if err != nil {
 		startupLogger.Fatal("Failed initializing runtime modules", zap.Error(err))
 	}
-	matchmaker.SetMatchmakerMatched(runtime.MatchmakerMatched)
-	matchmaker.SetMatchmakerOverride(runtime.MatchmakerOverride)
+	matchmaker.SetMatchmakerMatched(runtime.MatchmakerMatched())
+	matchmaker.SetMatchmakerOverride(runtime.MatchmakerOverride())
 	tracker.SetPartyJoinListener(partyRegistry.Join)
 	tracker.SetPartyLeaveListener(partyRegistry.Leave)
 
