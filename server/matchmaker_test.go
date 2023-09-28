@@ -1686,6 +1686,7 @@ func createTestMatchmaker(t fatalable, logger *zap.Logger, tickerActive bool, me
 	}
 
 	matchMaker := NewLocalBenchMatchmaker(logger, logger, cfg, messageRouter, metrics, runtime, tickerActive)
+	matchMaker.SetMatchmakerMatched(runtime.matchmakerMatchedFunction)
 
 	return matchMaker.(*LocalMatchmaker), func() error {
 		matchMaker.Stop()

@@ -76,7 +76,7 @@ func runtimeWithModules(t *testing.T, modules map[string]string) (*Runtime, *Run
 	cfg := NewConfig(logger)
 	cfg.Runtime.Path = dir
 
-	return NewRuntime(context.Background(), logger, logger, NewDB(t), protojsonMarshaler, protojsonUnmarshaler, cfg, "", nil, nil, nil, nil, nil, nil, nil, nil, nil, metrics, nil, &DummyMessageRouter{}, nil, nil)
+	return NewRuntime(context.Background(), logger, logger, NewDB(t), protojsonMarshaler, protojsonUnmarshaler, cfg, "", nil, nil, nil, nil, nil, nil, nil, nil, nil, metrics, nil, &DummyMessageRouter{}, &LocalMatchmaker{}, nil)
 }
 
 func TestRuntimeSampleScript(t *testing.T) {
