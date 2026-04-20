@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,6 +68,7 @@ type PartyRegistry interface {
 	PartyDataSend(ctx context.Context, id uuid.UUID, node, sessionID, fromNode string, opCode int64, data []byte) error
 	PartyUpdate(ctx context.Context, id uuid.UUID, node, sessionID, fromNode, label string, open, hidden bool) error
 	PartyList(ctx context.Context, limit int, open *bool, showHidden bool, query, cursor string) ([]*api.Party, string, error)
+	PartyGet(ctx context.Context, partyID string) (leaderID string, memberUserIDs []string, err error)
 	LabelUpdate(id uuid.UUID, node, label string, open, hidden bool, maxSize int, createTime time.Time) error
 }
 
@@ -590,6 +592,55 @@ func (p *LocalPartyRegistry) PartyList(ctx context.Context, limit int, open *boo
 	}
 
 	return parties, newCursor, nil
+}
+
+func (p *LocalPartyRegistry) PartyGet(ctx context.Context, partyID string) (string, []string, error) {
+	// Party ID is in format "uuid.node"
+	id, node, err := parsePartyID(partyID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if node != p.node {
+		return "", nil, ErrPartyNotFound
+	}
+
+	ph, found := p.parties.Load(id)
+	if !found {
+		return "", nil, ErrPartyNotFound
+	}
+
+	ph.RLock()
+	defer ph.RUnlock()
+
+	if ph.stopped {
+		return "", nil, runtime.ErrPartyClosed
+	}
+
+	var leaderID string
+	if ph.leader != nil {
+		leaderID = ph.leader.UserPresence.UserId
+	}
+
+	members := ph.members.List()
+	memberUserIDs := make([]string, 0, len(members))
+	for _, member := range members {
+		memberUserIDs = append(memberUserIDs, member.UserPresence.UserId)
+	}
+
+	return leaderID, memberUserIDs, nil
+}
+
+func parsePartyID(partyID string) (uuid.UUID, string, error) {
+	parts := strings.SplitN(partyID, ".", 2)
+	if len(parts) != 2 {
+		return uuid.Nil, "", errors.New("invalid party ID format")
+	}
+	id, err := uuid.FromString(parts[0])
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+	return id, parts[1], nil
 }
 
 func (p *LocalPartyRegistry) queryMatchesToEntries(dmi search.DocumentMatchIterator) ([]*PartyIndexEntry, error) {

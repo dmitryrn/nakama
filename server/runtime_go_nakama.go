@@ -4512,6 +4512,16 @@ func (n *RuntimeGoNakamaModule) PartyList(ctx context.Context, limit int, open *
 	return n.partyRegistry.PartyList(ctx, limit, open, hidden, query, cursor)
 }
 
+// @group parties
+// @summary Get information about a specific party by ID.
+// @param partyId(type=string) The ID of the party to get information about.
+// @return leaderId(string) The user ID of the party leader.
+// @return memberUserIds([]string) A list of user IDs of all party members.
+// @return error(error) An optional error value if an error occurred.
+func (n *RuntimeGoNakamaModule) PartyGet(ctx context.Context, partyID string) (string, []string, error) {
+	return n.partyRegistry.PartyGet(ctx, partyID)
+}
+
 // @group satori
 // @summary Get the Satori client.
 // @return satori(runtime.Satori) The Satori client.
