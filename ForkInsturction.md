@@ -6,7 +6,7 @@ This document describes how to modify both `nakama` and `nakama-common` when add
 
 - **nakama-common fork**: `github.com/dmitryrn/nakama-common`
 - **nakama fork**: `github.com/dmitryrn/nakama`
-- **Docker Hub**: `dmitryrn/nakama`
+- **Docker Hub**: `dmitriirog/nakama` (note: NOT dmitryrn -- the Docker Hub account differs from the GitHub one)
 
 ## When You Need This
 
@@ -134,18 +134,18 @@ The `nakama-pluginbuilder` image does **NOT** need to be rebuilt. It's just a Go
 ```bash
 cd nakama
 docker build -f build/Dockerfile \
-  --build-arg version="3.38.0-forked" \
-  --build-arg commit="$(git rev-parse --short HEAD)" \
-  -t dmitryrn/nakama:3.38.0-forked \
-  -t dmitryrn/nakama:latest \
+  --build-arg VERSION="3.38.1-forked" \
+  --build-arg COMMIT="$(git rev-parse --short HEAD)" \
+  -t dmitriirog/nakama:3.38.1-forked \
+  -t dmitriirog/nakama:latest \
   .
 ```
 
 Push to Docker Hub:
 ```bash
 docker login
-docker push dmitryrn/nakama:3.38.0-forked
-docker push dmitryrn/nakama:latest
+docker push dmitriirog/nakama:3.38.1-forked
+docker push dmitriirog/nakama:latest
 ```
 
 ### 7. Update Your Plugin Project
@@ -171,8 +171,8 @@ Use the custom nakama image while keeping the stock plugin builder:
 ```dockerfile
 # ARG NAKAMA_VERSION=3.38.0
 # ARG NAKAMA_IMAGE=heroiclabs/nakama
-ARG NAKAMA_VERSION=3.38.0-forked
-ARG NAKAMA_IMAGE=dmitryrn/nakama
+ARG NAKAMA_VERSION=3.38.1-forked
+ARG NAKAMA_IMAGE=dmitriirog/nakama
 ARG GO_BUILD_TAGS=
 
 # Plugin builder stays stock - it's just a Go toolchain
@@ -201,6 +201,11 @@ docker build -t your-plugin:latest .
 
 ## Important Notes
 
+- **Always cut a NEW image tag when nakama-common changes.** A Go plugin and the nakama binary
+  that loads it must be built against the exact same nakama-common version. Re-pushing an existing
+  tag leaves stale copies cached on other machines, and the only symptom is the plugin refusing to
+  load with a version-mismatch error that names no versions. Bump the tag and the two Dockerfiles
+  in the plugin repo (`Dockerfile` and `test/Dockerfile`) together with the go.mod replace.
 - **Go module proxy caching**: Fresh tags on GitHub take a few minutes to propagate through Go's module proxy (`proxy.golang.org`). Use `GOPRIVATE` to bypass this.
 - **Vendor directory**: Committing `vendor/` ensures reproducible builds without network access.
 - **Plugin builder image**: `heroiclabs/nakama-pluginbuilder` is just `golang` + `gcc`. It doesn't contain nakama-common, so it never needs rebuilding.
