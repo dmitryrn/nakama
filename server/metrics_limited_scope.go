@@ -80,6 +80,14 @@ func (m *metricsLimitedScope) Tagged(tags map[string]string) tally.Scope {
 	return m.scope.Tagged(tags)
 }
 
+// Delete forgets a tag set so its slot against the limit is reusable. Deleting a tag set that
+// was never seen, or was rejected for exceeding the limit, does nothing.
+func (m *metricsLimitedScope) Delete(tags map[string]string) {
+	if _, loaded := m.keys.LoadAndDelete(tally.KeyForStringMap(tags)); loaded {
+		m.keysCount.Add(-1)
+	}
+}
+
 func (m *metricsLimitedScope) SubScope(name string) tally.Scope {
 	return m.scope.SubScope(name)
 }

@@ -70,6 +70,7 @@ type Metrics interface {
 
 	CustomCounter(name string, tags map[string]string, delta int64)
 	CustomGauge(name string, tags map[string]string, value float64)
+	CustomGaugeDelete(name string, tags map[string]string)
 	CustomTimer(name string, tags map[string]string, value time.Duration)
 }
 
@@ -95,6 +96,9 @@ type LocalMetrics struct {
 	PrometheusScope        tally.Scope
 	prometheusCustomScope  tally.Scope
 	metricsCollectionScope tally.Scope
+	prometheusReporter     prometheus.Reporter
+	prometheusSanitizer    tally.Sanitizer
+	prometheusRootTags     map[string]string
 	prometheusCloser       io.Closer
 	prometheusHTTPServer   *http.Server
 }
@@ -167,6 +171,15 @@ func NewLocalMetrics(logger, startupLogger *zap.Logger, db *sql.DB, config Confi
 	if config.GetMetrics().CustomScopeLimit > 0 {
 		m.prometheusCustomScope = newMetricsLimitedScope(m.prometheusCustomScope, int64(config.GetMetrics().CustomScopeLimit))
 		m.metricsCollectionScope = newMetricsLimitedScope(m.metricsCollectionScope, int64(config.GetMetrics().CustomScopeLimit))
+	}
+
+	// Kept so CustomGaugeDelete can reach the same Prometheus vectors tally reports into, and
+	// rebuild the exact sanitized name and label set they were registered under.
+	m.prometheusReporter = reporter
+	m.prometheusSanitizer = tally.NewSanitizer(prometheus.DefaultSanitizerOpts)
+	m.prometheusRootTags = make(map[string]string, len(tags))
+	for k, v := range tags {
+		m.prometheusRootTags[m.prometheusSanitizer.Key(k)] = m.prometheusSanitizer.Value(v)
 	}
 
 	// Check if exposing Prometheus metrics directly is enabled.
@@ -554,4 +567,70 @@ func (m *LocalMetrics) CustomTimer(name string, tags map[string]string, value ti
 		scope = scope.Tagged(tags)
 	}
 	scope.Timer(name).Record(value)
+}
+
+// CustomGaugeDelete removes a gauge with the specified name and tags from the Prometheus
+// output. Samples Prometheus has already scraped are unaffected: this only stops the series
+// being extended with a value that is no longer true.
+//
+// The tally scope behind a metric is keyed by tag set rather than by name, so releasing it
+// releases every metric sharing these tags. That suits a tag set that identifies one subject -
+// a game server, say, whose metrics all die with it - but do not share one between features.
+func (m *LocalMetrics) CustomGaugeDelete(name string, tags map[string]string) {
+	labels := make(map[string]string, len(m.prometheusRootTags)+len(tags))
+	for k, v := range m.prometheusRootTags {
+		labels[k] = v
+	}
+	for k, v := range tags {
+		labels[m.prometheusSanitizer.Key(k)] = m.prometheusSanitizer.Value(v)
+	}
+	labelKeys := make([]string, 0, len(labels))
+	for k := range labels {
+		labelKeys = append(labelKeys, k)
+	}
+
+	// RegisterGauge hands back the vector already registered under this name and label set. It
+	// only allocates one when the gauge was never emitted, and then Delete finds nothing anyway.
+	fqName := m.customMetricName(name)
+	gaugeVec, err := m.prometheusReporter.RegisterGauge(fqName, labelKeys, fqName+" gauge")
+	if err != nil {
+		m.logger.Warn("Could not resolve Prometheus gauge to delete", zap.String("name", fqName), zap.Error(err))
+		return
+	}
+	gaugeVec.Delete(labels)
+
+	// Untagged metrics live directly on the custom scope, which the whole runtime shares.
+	if len(tags) == 0 {
+		return
+	}
+
+	// Closing releases the tag set on the next report cycle, so its memory and its slot against
+	// CustomScopeLimit come back. A later write with the same tags builds a fresh scope, and the
+	// series reappears.
+	if scope := m.prometheusCustomScope.Tagged(tags); scope != tally.NoopScope {
+		if closer, ok := scope.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				m.logger.Warn("Could not release metrics scope", zap.String("name", fqName), zap.Error(err))
+			}
+		}
+	}
+	if limited, ok := m.prometheusCustomScope.(*metricsLimitedScope); ok {
+		limited.Delete(tags)
+	}
+}
+
+// customMetricName rebuilds the name tally reports a custom metric under: the root prefix, the
+// custom sub-scope prefix and the metric name, each sanitized, joined only where the left side
+// is non-empty. Both prefixes are configurable and may be empty.
+func (m *LocalMetrics) customMetricName(name string) string {
+	join := func(prefix, suffix string) string {
+		if prefix == "" {
+			return suffix
+		}
+		return prefix + prometheus.DefaultSeparator + suffix
+	}
+
+	fqName := m.prometheusSanitizer.Name(m.config.GetMetrics().Prefix)
+	fqName = join(fqName, m.prometheusSanitizer.Name(m.config.GetMetrics().CustomPrefix))
+	return join(fqName, m.prometheusSanitizer.Name(name))
 }

@@ -4074,6 +4074,14 @@ func (n *RuntimeGoNakamaModule) MetricsGaugeSet(name string, tags map[string]str
 }
 
 // @group metrics
+// @summary Delete a custom metrics gauge, stopping it from being reported.
+// @param name(type=string) The name of the custom metrics gauge.
+// @param tags(type=map[string]string) The metrics tags associated with this gauge.
+func (n *RuntimeGoNakamaModule) MetricsGaugeDelete(name string, tags map[string]string) {
+	n.metrics.CustomGaugeDelete(name, tags)
+}
+
+// @group metrics
 // @summary Add a custom metrics timer.
 // @param name(type=string) The name of the custom metrics timer.
 // @param tags(type=map[string]string) The metrics tags associated with this timer.

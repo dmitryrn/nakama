@@ -1225,6 +1225,7 @@ type NakamaModule interface {
 
 	MetricsCounterAdd(name string, tags map[string]string, delta int64)
 	MetricsGaugeSet(name string, tags map[string]string, value float64)
+	MetricsGaugeDelete(name string, tags map[string]string)
 	MetricsTimerRecord(name string, tags map[string]string, value time.Duration)
 
 	ChannelIdBuild(ctx context.Context, sender string, target string, chanType ChannelType) (string, error)
